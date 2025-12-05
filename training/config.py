@@ -43,11 +43,11 @@ DIRS_TO_CREATE = [SCRATCH_DIR, CHECKPOINT_DIR, LOG_DIR, RESULTS_DIR]
 # MODEL
 # ============================================================================
 
-LM_MODEL_NAME = "google/flan-t5-xl"  # Base for Minerva-3B
-LM_TOKENIZER_NAME = "google/flan-t5-xl"
+LM_MODEL_NAME = "EleutherAI/pythia-1b"  # Base for Minerva-3B
+LM_TOKENIZER_NAME = "EleutherAI/pythia-1b"
 VISION_ENCODER_NAME = "ViT-L-14"
 VISION_ENCODER_PRETRAINED = "openai"
-CROSS_ATTN_EVERY_N_LAYERS = 4
+CROSS_ATTN_EVERY_N_LAYERS = 1
 
 # ============================================================================
 # TRAINING
@@ -64,7 +64,7 @@ MAX_GRAD_NORM = 1.0
 LR_SCHEDULER_TYPE = "cosine"
 
 # Memory optimization
-USE_GRADIENT_CHECKPOINTING = True
+USE_GRADIENT_CHECKPOINTING = False
 USE_DEEPSPEED = True
 USE_AMP = True
 
@@ -77,7 +77,7 @@ SAVE_TOTAL_LIMIT = 5
 # ============================================================================
 
 IMAGE_SIZE = 224
-MAX_TEXT_LENGTH = 512
+MAX_TEXT_LENGTH = 256
 NUM_SHOTS = 4  # Few-shot examples for RAG
 NUM_WORKERS = 4
 PIN_MEMORY = True

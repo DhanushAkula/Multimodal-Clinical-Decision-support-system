@@ -1,0 +1,39 @@
+        
+        # Mixed precision forward pass
+        if scaler is not None:
+            with autocast():
+                vision_x = vision_x.unsqueeze(2)
+                outputs = model(
+                    vision_x=vision_x,
+                    lang_x=input_ids,
+                    attention_mask=attention_mask,
+                    labels=labels
+                )
+                loss = outputs.loss / config.GRADIENT_ACCUMULATION_STEPS
+            
+            scaler.scale(loss).backward()
+            
+            if (step + 1) % config.GRADIENT_ACCUMULATION_STEPS == 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), config.MAX_GRAD_NORM)
+                scaler.step(optimizer)
+                scaler.update()
+                scheduler.step()
+                optimizer.zero_grad()
+        else:
+            vision_x = vision_x.unsqueeze(2)
+            outputs = model(
+                vision_x=vision_x,
+                lang_x=input_ids,
+                attention_mask=attention_mask,
+                labels=labels
+            )
+            loss = outputs.loss / config.GRADIENT_ACCUMULATION_STEPS
+            loss.backward()
+            
+            if (step + 1) % config.GRADIENT_ACCUMULATION_STEPS == 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), config.MAX_GRAD_NORM)
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+        

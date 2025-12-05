@@ -10,7 +10,6 @@ import os
 import sys
 import json
 import logging
-from torch.cuda.amp import autocast, GradScaler
 import random
 from datetime import datetime
 from pathlib import Path
@@ -281,7 +280,6 @@ def create_flamingo_model(local_rank=0):
         lang_encoder_path=config.LM_MODEL_NAME,
         tokenizer_path=config.LM_TOKENIZER_NAME,
         cross_attn_every_n_layers=config.CROSS_ATTN_EVERY_N_LAYERS,
-        decoder_layers_attr_name="gpt_neox.layers",  # For Minerva/Mistral architecture
     )
     
     if config.USE_GRADIENT_CHECKPOINTING:
@@ -292,12 +290,6 @@ def create_flamingo_model(local_rank=0):
     # Move to correct GPU
     device = torch.device(f'cuda:{local_rank}')
     model = model.to(device)
-    
-    # Freeze vision encoder to save memory
-    for param in model.vision_encoder.parameters():
-        param.requires_grad = False
-    if local_rank == 0:
-        logger.info("Vision encoder frozen")
     
     if local_rank == 0:
         total_params = sum(p.numel() for p in model.parameters())
@@ -311,7 +303,7 @@ def create_flamingo_model(local_rank=0):
 # TRAINING
 # ============================================================================
 
-def train_epoch(model, train_loader, optimizer, scheduler, device, epoch, logger, writer=None, rank=0, world_size=1, scaler=None):
+def train_epoch(model, train_loader, optimizer, scheduler, device, epoch, logger, writer=None, rank=0, world_size=1):
     """Train one epoch"""
     model.train()
     total_loss = 0
@@ -328,7 +320,6 @@ def train_epoch(model, train_loader, optimizer, scheduler, device, epoch, logger
         attention_mask = batch['attention_mask'].to(device)
         labels = batch['labels'].to(device)
         
-        vision_x = vision_x.unsqueeze(2)  # Add frame dim: [B,1,C,H,W] -> [B,1,1,C,H,W]
         outputs = model(
             vision_x=vision_x,
             lang_x=input_ids,
@@ -373,7 +364,6 @@ def validate(model, val_loader, device, epoch, logger, writer=None, rank=0):
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
             
-            vision_x = vision_x.unsqueeze(2)  # Add frame dim
             outputs = model(
                 vision_x=vision_x,
                 lang_x=input_ids,
@@ -541,11 +531,10 @@ def main():
     )
     
     # Setup optimizer
-    optimizer = torch.optim.SGD(
-        [p for p in model.parameters() if p.requires_grad],
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
         lr=config.LEARNING_RATE,
-        weight_decay=config.WEIGHT_DECAY,
-        momentum=0.9,
+        weight_decay=config.WEIGHT_DECAY
     )
     
     # Setup scheduler
@@ -564,8 +553,6 @@ def main():
     # Training loop
     best_val_loss = float('inf')
     
-    # Create gradient scaler for mixed precision
-    scaler = GradScaler() if config.USE_AMP else None
     for epoch in range(1, config.NUM_EPOCHS + 1):
         if rank == 0:
             logger.info(f"\n{'='*80}")
@@ -576,10 +563,10 @@ def main():
         if train_sampler:
             train_sampler.set_epoch(epoch)
         
+        # Train
         train_loss = train_epoch(
             model, train_loader, optimizer, scheduler,
-            device, epoch, logger, writer, rank, world_size,
-            scaler
+            device, epoch, logger, writer, rank, world_size
         )
         
         # Validate
