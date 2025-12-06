@@ -1,4 +1,4 @@
-# MedPix 2.0 DR-Minerva: End-to-End Medical Diagnosis System
+# MedPix 2.0 Pythia: End-to-End Medical Diagnosis System
 
 **Northeastern University - Capstone Project**  
 **Author:** Avinash Arutla (arutla.a@northeastern.edu), Satwik Reddy (sripathi.sa@northestern.edu), Dhanush Akula (akula.d@northeastern.edu)
