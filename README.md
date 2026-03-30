@@ -609,7 +609,7 @@ cd ~/medpix-project/MedPix-2.0
 sbatch job_gnn_inference.sh
 ```
 
-**Expected Runtime:** ~18 hours.
+**Expected Runtime:** ~18 hours
 
 #### Phase 5: Evaluate
 
